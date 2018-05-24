@@ -1,4 +1,5 @@
 #tool nuget:?package=NUnit.ConsoleRunner&version=3.4.0
+#addin "Cake.Docker"
 //////////////////////////////////////////////////////////////////////
 // ARGUMENTS
 //////////////////////////////////////////////////////////////////////
@@ -12,6 +13,8 @@ var configuration = Argument("configuration", "Release");
 
 // Define directories.
 var solutionFile = File("./src/DockerGracefullShutdownTest.sln");
+var projDir = Directory("./src/DockerGracefullShutdownTest");
+var dockerBuildFile = File("Dockerfile");
 var buildDir = Directory("./src/DockerGracefullShutdownTest/bin") + Directory(configuration);
 
 //////////////////////////////////////////////////////////////////////
@@ -38,8 +41,15 @@ Task("Build")
     if(IsRunningOnWindows())
     {
       // Use MSBuild
-      MSBuild(solutionFile, settings =>
-        settings.SetConfiguration(configuration));
+    //   MSBuild(solutionFile, settings =>
+    //     settings.SetConfiguration(configuration));
+        var settings = new DotNetCoreBuildSettings
+        {
+            Configuration = configuration,
+            OutputDirectory = "./build/"
+        };
+
+        DotNetCoreBuild(solutionFile, settings);
     }
     else
     {
@@ -57,6 +67,31 @@ Task("Run-Unit-Tests")
         NoResults = true
         });
 });
+
+Task("Publish")
+    .IsDependentOn("Run-Unit-Tests")
+    .Does(()=>
+    {
+        var settings = new DotNetCorePublishSettings
+        {
+            Configuration = configuration,
+            OutputDirectory = "./publish/"
+        };
+
+        DotNetCorePublish(solutionFile, settings);
+    });
+
+Task("Build-Docker")
+	.IsDependentOn("Publish")
+	.Does(() =>
+	{
+        var dockerBuildSettings = new DockerImageBuildSettings
+        {
+            File = dockerBuildFile,
+            Label = new[] {"DockerGracefullShutdownTest"}
+        };
+		DockerBuild(dockerBuildSettings, ".");
+	});
 
 //////////////////////////////////////////////////////////////////////
 // TASK TARGETS

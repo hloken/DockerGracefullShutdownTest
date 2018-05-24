@@ -275,3 +275,5 @@ obj/
 packages/
 /tools/Cake/**
 /tools/NUnit.ConsoleRunner.3.4.0/**
+/build/**
+/tools/Addins/**
